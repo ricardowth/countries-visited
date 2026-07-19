@@ -17,6 +17,7 @@ export interface PersistedState {
   listMode: ListMode;
   statuses: Record<string, Status>;
   theme: ThemePref;
+  showLabels: boolean;
 }
 
 interface Store extends PersistedState {
@@ -24,10 +25,16 @@ interface Store extends PersistedState {
   setStatus: (code: string, status: Status | null) => void;
   setListMode: (mode: ListMode) => void;
   setTheme: (theme: ThemePref) => void;
-  replaceState: (state: Omit<PersistedState, 'theme'>) => void;
+  setShowLabels: (show: boolean) => void;
+  replaceState: (state: Pick<PersistedState, 'listMode' | 'statuses'>) => void;
 }
 
-const DEFAULT_STATE: PersistedState = { listMode: 'un', statuses: {}, theme: 'auto' };
+const DEFAULT_STATE: PersistedState = {
+  listMode: 'un',
+  statuses: {},
+  theme: 'auto',
+  showLabels: true,
+};
 
 function loadState(): PersistedState {
   try {
@@ -38,6 +45,7 @@ function loadState(): PersistedState {
       listMode: parsed.listMode === 'travel' ? 'travel' : 'un',
       statuses: typeof parsed.statuses === 'object' && parsed.statuses ? parsed.statuses : {},
       theme: parsed.theme === 'light' || parsed.theme === 'dark' ? parsed.theme : 'auto',
+      showLabels: parsed.showLabels !== false,
     };
   } catch {
     return DEFAULT_STATE;
@@ -96,13 +104,25 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     setState((prev) => ({ ...prev, theme }));
   }, []);
 
-  const replaceState = useCallback((next: Omit<PersistedState, 'theme'>) => {
+  const setShowLabels = useCallback((showLabels: boolean) => {
+    setState((prev) => ({ ...prev, showLabels }));
+  }, []);
+
+  const replaceState = useCallback((next: Pick<PersistedState, 'listMode' | 'statuses'>) => {
     setState((prev) => ({ ...prev, ...next }));
   }, []);
 
   const value = useMemo<Store>(
-    () => ({ ...state, resolvedTheme, setStatus, setListMode, setTheme, replaceState }),
-    [state, resolvedTheme, setStatus, setListMode, setTheme, replaceState],
+    () => ({
+      ...state,
+      resolvedTheme,
+      setStatus,
+      setListMode,
+      setTheme,
+      setShowLabels,
+      replaceState,
+    }),
+    [state, resolvedTheme, setStatus, setListMode, setTheme, setShowLabels, replaceState],
   );
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

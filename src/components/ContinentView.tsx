@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { geoNaturalEarth1, geoOrthographic, geoPath } from 'd3-geo';
 import { useStore } from '../state/store';
 import {
@@ -10,6 +10,7 @@ import {
 } from '../data/countries';
 import { worldFeatures, featureKey } from '../data/geo';
 import { fillVarForStatus } from './mapColors';
+import { anchorByKey, fitLabelSize, labelRect, overlapsAny, type LabelRect } from './mapLabels';
 import { Legend } from './Legend';
 
 const VIEW_W = 800;
@@ -63,8 +64,23 @@ function frameProjection(continent: Continent) {
 }
 
 export function ContinentView({ onSelect }: { onSelect: (code: string) => void }) {
-  const { statuses, listMode } = useStore();
+  const { statuses, listMode, showLabels } = useStore();
   const [continent, setContinent] = useState<Continent>('Europe');
+  const mapRef = useRef<HTMLDivElement>(null);
+  const [mapSize, setMapSize] = useState({ w: VIEW_W, h: VIEW_H });
+
+  useEffect(() => {
+    const el = mapRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(() => {
+      setMapSize({ w: el.clientWidth || VIEW_W, h: el.clientHeight || VIEW_H });
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  // The SVG scales with `meet`, so on-screen px = viewBox units × this factor.
+  const scale = Math.min(mapSize.w / VIEW_W, mapSize.h / VIEW_H) || 1;
 
   const shapes = useMemo(() => {
     const projection = frameProjection(continent);
@@ -74,6 +90,24 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
       const code = codeForMapKey(key);
       const country = code ? countryByCode.get(code) : undefined;
       const isTerritory = sovereignByMapId.has(key);
+      const active =
+        (country?.continent === continent || isTerritory) &&
+        !!country &&
+        (listMode === 'travel' || country.un);
+
+      // Label sized to the country's on-screen footprint; hidden when it
+      // would be smaller than ~9px on screen.
+      let label: { x: number; y: number; size: number; text: string } | null = null;
+      const anchor = active ? anchorByKey.get(key) : undefined;
+      if (anchor) {
+        const [[x0, y0], [x1, y1]] = path.bounds(anchor.labelFeature);
+        const size = fitLabelSize(anchor.name, x1 - x0, y1 - y0, 9 / scale, 19 / scale);
+        if (size) {
+          const [cx, cy] = path.centroid(anchor.labelFeature);
+          label = { x: cx, y: cy, size, text: anchor.name };
+        }
+      }
+
       return {
         key,
         d: path(f) ?? '',
@@ -82,9 +116,28 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
         // Territories paint and select as their sovereign in every frame.
         inContinent: country?.continent === continent || isTerritory,
         inList: !!country && (listMode === 'travel' || country.un),
+        label,
       };
     });
-  }, [continent, listMode]);
+  }, [continent, listMode, scale]);
+
+  // Drop labels that stick out of the frame or collide; bigger countries win.
+  const visibleLabels = useMemo(() => {
+    if (!showLabels) return [];
+    const withLabels = shapes.filter((s) => s.label !== null);
+    withLabels.sort((a, b) => b.label!.size - a.label!.size);
+    const placed: LabelRect[] = [];
+    const out: { key: string; x: number; y: number; size: number; text: string }[] = [];
+    for (const s of withLabels) {
+      const { x, y, size, text } = s.label!;
+      const rect = labelRect(x, y, text, size);
+      if (rect.x0 < 4 || rect.y0 < 4 || rect.x1 > VIEW_W - 4 || rect.y1 > VIEW_H - 4) continue;
+      if (overlapsAny(rect, placed)) continue;
+      placed.push(rect);
+      out.push({ key: s.key, x, y, size, text });
+    }
+    return out;
+  }, [shapes, showLabels]);
 
   return (
     <div className="view no-scroll">
@@ -100,7 +153,7 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
           </button>
         ))}
       </div>
-      <div className="continent-map">
+      <div className="continent-map" ref={mapRef}>
         <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet">
           <defs>
             <clipPath id="map-frame">
@@ -127,6 +180,19 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
                 </path>
               );
             })}
+            {visibleLabels.map((l) => (
+              <text
+                key={`label-${l.key}`}
+                x={l.x}
+                y={l.y}
+                fontSize={l.size}
+                strokeWidth={l.size / 5}
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {l.text}
+              </text>
+            ))}
           </g>
         </svg>
       </div>

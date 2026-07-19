@@ -9,6 +9,8 @@ export interface MapColors {
   ocean: string;
   border: string;
   graticule: string;
+  label: string;
+  labelHalo: string;
 }
 
 let cache: { theme: string | undefined; colors: MapColors } | null = null;
@@ -28,6 +30,8 @@ export function readMapColors(): MapColors {
     ocean: get('--ocean'),
     border: get('--map-border'),
     graticule: get('--graticule'),
+    label: get('--map-label'),
+    labelHalo: get('--map-label-halo'),
   };
   cache = { theme, colors };
   return colors;

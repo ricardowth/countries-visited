@@ -44,29 +44,31 @@ export function StatsView() {
         </p>
       )}
 
-      {stats.perContinent.map(({ continent, done, total }) => {
-        const p = total ? Math.round((done / total) * 100) : 0;
-        return (
-          <div className="progress-row" key={continent}>
-            <div className="row-head">
-              <span>{continent}</span>
-              <span className="pct">
-                {done} / {total} · {p}%
-              </span>
+      <div className="progress-list">
+        {stats.perContinent.map(({ continent, done, total }) => {
+          const p = total ? Math.round((done / total) * 100) : 0;
+          return (
+            <div className="progress-row" key={continent}>
+              <div className="row-head">
+                <span>{continent}</span>
+                <span className="pct">
+                  {done} / {total} · {p}%
+                </span>
+              </div>
+              <div
+                className="progress-track"
+                role="progressbar"
+                aria-valuenow={done}
+                aria-valuemin={0}
+                aria-valuemax={total}
+                aria-label={`${continent}: ${done} of ${total} countries visited`}
+              >
+                <div className="progress-fill" style={{ width: `${p}%` }} />
+              </div>
             </div>
-            <div
-              className="progress-track"
-              role="progressbar"
-              aria-valuenow={done}
-              aria-valuemin={0}
-              aria-valuemax={total}
-              aria-label={`${continent}: ${done} of ${total} countries visited`}
-            >
-              <div className="progress-fill" style={{ width: `${p}%` }} />
-            </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -25,6 +25,8 @@
   --land-muted: #1c2740;
   --map-border: #0b1220;
   --graticule: #1a2440;
+  --map-label: #e2eaf6;
+  --map-label-halo: rgba(11, 18, 32, 0.75);
 
   --tabbar-h: 58px;
 }
@@ -52,6 +54,8 @@
   --land-muted: #b9cbdd;
   --map-border: #8fa9c2;
   --graticule: #bdd3e7;
+  --map-label: #2c3d55;
+  --map-label-halo: rgba(255, 255, 255, 0.78);
 }
 
 * {
@@ -413,6 +417,15 @@ button {
   cursor: pointer;
 }
 
+.continent-map text {
+  pointer-events: none;
+  font-weight: 600;
+  fill: var(--map-label);
+  paint-order: stroke;
+  stroke: var(--map-label-halo);
+  stroke-linejoin: round;
+}
+
 /* ---------- Stats ---------- */
 .stat-cards {
   display: grid;
@@ -684,7 +697,7 @@ button {
   }
 }
 
-/* ---------- Desktop: sidebar navigation ---------- */
+/* ---------- Desktop: sidebar navigation, full-width content ---------- */
 @media (min-width: 960px) {
   :root {
     --tabbar-h: 0px;
@@ -692,6 +705,41 @@ button {
 
   .app {
     padding-left: 96px;
+  }
+
+  .view,
+  .app-header {
+    max-width: none;
+    padding-left: 28px;
+    padding-right: 28px;
+  }
+
+  .rows {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+
+  .rows .country-row {
+    margin-bottom: 0;
+  }
+
+  .progress-list {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 36px;
+  }
+
+  .option-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .option-grid .option-card {
+    margin-bottom: 0;
   }
 
   .tabbar {

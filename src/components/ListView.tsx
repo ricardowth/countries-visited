@@ -46,18 +46,20 @@ export function ListView({ onSelect }: { onSelect: (code: string) => void }) {
                 {done} / {items.length}
               </span>
             </div>
-            {items.map((c) => {
-              const status = statuses[c.code];
-              return (
-                <button key={c.code} className="country-row" onClick={() => onSelect(c.code)}>
-                  <span className="flag">{c.flag}</span>
-                  <span className="name">{c.name}</span>
-                  {status && (
-                    <span className={`status-pill ${status}`}>{STATUS_LABEL[status]}</span>
-                  )}
-                </button>
-              );
-            })}
+            <div className="rows">
+              {items.map((c) => {
+                const status = statuses[c.code];
+                return (
+                  <button key={c.code} className="country-row" onClick={() => onSelect(c.code)}>
+                    <span className="flag">{c.flag}</span>
+                    <span className="name">{c.name}</span>
+                    {status && (
+                      <span className={`status-pill ${status}`}>{STATUS_LABEL[status]}</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </section>
         );
       })}

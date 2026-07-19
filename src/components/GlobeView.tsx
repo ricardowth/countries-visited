@@ -11,10 +11,12 @@ import { useStore } from '../state/store';
 import { codeForMapKey, countryByCode, type ListMode, type Status } from '../data/countries';
 import { worldFeatures, featureKey } from '../data/geo';
 import { fillForStatus, readMapColors } from './mapColors';
+import { labelAnchors, fitLabelSize, labelRect, overlapsAny, type LabelRect } from './mapLabels';
 import { Legend } from './Legend';
 
 const MIN_ZOOM = 0.8;
-const MAX_ZOOM = 5;
+// Deep zoom so microstates (Vatican, San Marino, Liechtenstein…) can be tapped.
+const MAX_ZOOM = 200;
 
 export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -22,9 +24,10 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
   const storeRef = useRef({
     statuses: {} as Record<string, Status>,
     listMode: 'un' as ListMode,
+    showLabels: true,
   });
-  const { statuses, listMode, resolvedTheme } = useStore();
-  storeRef.current = { statuses, listMode };
+  const { statuses, listMode, resolvedTheme, showLabels } = useStore();
+  storeRef.current = { statuses, listMode, showLabels };
 
   const viewRef = useRef({ rotation: [0, -15] as [number, number], zoom: 1 });
 
@@ -38,15 +41,21 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
     const projection: GeoProjection = geoOrthographic().clipAngle(90);
     const graticule = geoGraticule10();
 
-    function render() {
+    // withLabels=false during drag frames — label fitting doubles the per-frame
+    // cost, so labels reappear when the interaction settles.
+    function render(withLabels = true) {
       const dpr = window.devicePixelRatio || 1;
       const { rotation, zoom } = viewRef.current;
-      const { statuses, listMode } = storeRef.current;
+      const { statuses, listMode, showLabels } = storeRef.current;
       const colors = readMapColors();
       projection
         .translate([width / 2, height / 2])
         .scale((Math.min(width, height) / 2 - 10) * zoom)
-        .rotate(rotation);
+        .rotate(rotation)
+        .clipExtent([
+          [0, 0],
+          [width, height],
+        ]);
       const path = geoPath(projection, ctx);
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -75,6 +84,46 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
         ctx.strokeStyle = colors.border;
         ctx.lineWidth = 0.5;
         ctx.stroke();
+      }
+
+      if (withLabels && showLabels) {
+        const center: [number, number] = [-rotation[0], -rotation[1]];
+        const radius = (Math.min(width, height) / 2 - 10) * zoom;
+        const candidates: { name: string; size: number; x: number; y: number }[] = [];
+        for (const a of labelAnchors) {
+          const country = countryByCode.get(a.code);
+          if (!country || (listMode !== 'travel' && !country.un)) continue;
+          // Skip labels on the far side or hugging the limb of the globe.
+          if (geoDistance(a.centroid, center) > 1.35) continue;
+          const [[x0, y0], [x1, y1]] = path.bounds(a.labelFeature);
+          const size = fitLabelSize(a.name, x1 - x0, y1 - y0, 9, 18);
+          if (!size) continue;
+          const pos = projection(a.centroid);
+          if (!pos) continue;
+          // The whole label must stay inside the globe disc.
+          const halfWidth = (a.name.length * size * 0.6) / 2;
+          if (Math.hypot(pos[0] - width / 2, pos[1] - height / 2) + halfWidth > radius - 4) {
+            continue;
+          }
+          candidates.push({ name: a.name, size, x: pos[0], y: pos[1] });
+        }
+        // Bigger countries win when labels would collide.
+        candidates.sort((p, q) => q.size - p.size);
+        const placed: LabelRect[] = [];
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.lineJoin = 'round';
+        for (const c of candidates) {
+          const rect = labelRect(c.x, c.y, c.name, c.size);
+          if (overlapsAny(rect, placed)) continue;
+          placed.push(rect);
+          ctx.font = `600 ${c.size}px system-ui, -apple-system, "Segoe UI", sans-serif`;
+          ctx.strokeStyle = colors.labelHalo;
+          ctx.lineWidth = c.size / 5;
+          ctx.strokeText(c.name, c.x, c.y);
+          ctx.fillStyle = colors.label;
+          ctx.fillText(c.name, c.x, c.y);
+        }
       }
 
       ctx.beginPath();
@@ -130,7 +179,7 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
         }
         pinchDist = dist;
         moved += 10;
-        render();
+        render(false);
         return;
       }
 
@@ -143,14 +192,18 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
         lambda + dx * speed,
         Math.max(-90, Math.min(90, phi - dy * speed)),
       ];
-      render();
+      render(false);
     }
 
     function onPointerUp(e: PointerEvent) {
       const pos = pointers.get(e.pointerId);
       pointers.delete(e.pointerId);
       pinchDist = 0;
-      if (pos && moved < 5) handleTap(pos);
+      if (pos && moved < 5) {
+        handleTap(pos);
+      } else if (pointers.size === 0) {
+        render(); // drag/pinch ended — bring the labels back
+      }
     }
 
     function handleTap([x, y]: [number, number]) {
@@ -160,13 +213,43 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
       const center = projection.rotate();
       if (geoDistance(coords, [-center[0], -center[1]]) > Math.PI / 2) return;
       const { listMode } = storeRef.current;
+      const inList = (code: string | undefined) => {
+        const country = code ? countryByCode.get(code) : undefined;
+        return country && (listMode === 'travel' || country.un) ? country : undefined;
+      };
+      const scale = projection.scale(); // px per radian
+
+      // Countries whose footprint is smaller than a fingertip get snap priority —
+      // otherwise Italy would always swallow a tap aimed at Vatican City.
+      let snap: { code: string; d: number } | null = null;
+      for (const a of labelAnchors) {
+        if (!inList(a.code)) continue;
+        const projRadius = Math.sqrt(a.areaSr / Math.PI) * scale;
+        if (projRadius > 14) continue;
+        const d = geoDistance(coords, a.centroid) * scale;
+        const tolerance = Math.max(20, projRadius + 10); // fingertip-sized target
+        if (d < tolerance && (!snap || d < snap.d)) snap = { code: a.code, d };
+      }
+      if (snap) {
+        onSelect(snap.code);
+        return;
+      }
+
       for (const f of worldFeatures) {
         if (!geoContains(f, coords)) continue;
         const code = codeForMapKey(featureKey(f));
-        const country = code ? countryByCode.get(code) : undefined;
-        if (code && country && (listMode === 'travel' || country.un)) onSelect(code);
+        if (inList(code)) onSelect(code!);
         return;
       }
+
+      // Ocean tap near a coastline — take the nearest country within ~12px.
+      let best: { code: string; d: number } | null = null;
+      for (const a of labelAnchors) {
+        if (!inList(a.code)) continue;
+        const d = geoDistance(coords, a.centroid) * scale;
+        if (d < (best?.d ?? 16)) best = { code: a.code, d };
+      }
+      if (best) onSelect(best.code);
     }
 
     function onWheel(e: WheelEvent) {
@@ -184,6 +267,15 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
     const api = { render };
     (canvas as unknown as { __api?: typeof api }).__api = api;
 
+    // Debug/e2e hook: jump the view to a rotation + zoom.
+    (window as unknown as { __globeView?: object }).__globeView = {
+      set(lambda: number, phi: number, zoom: number) {
+        viewRef.current.rotation = [lambda, phi];
+        viewRef.current.zoom = clampZoom(zoom);
+        render();
+      },
+    };
+
     return () => {
       observer.disconnect();
       canvas.removeEventListener('pointerdown', onPointerDown);
@@ -198,7 +290,7 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
   useEffect(() => {
     const canvas = canvasRef.current as unknown as { __api?: { render: () => void } } | null;
     canvas?.__api?.render();
-  }, [statuses, listMode, resolvedTheme]);
+  }, [statuses, listMode, resolvedTheme, showLabels]);
 
   const zoomBy = (factor: number) => {
     viewRef.current.zoom = clampZoom(viewRef.current.zoom * factor);
@@ -212,10 +304,10 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
       <div className="globe-wrap" ref={wrapRef}>
         <canvas ref={canvasRef} />
         <div className="zoom-controls">
-          <button onClick={() => zoomBy(1.3)} aria-label="Zoom in">
+          <button onClick={() => zoomBy(1.6)} aria-label="Zoom in">
             +
           </button>
-          <button onClick={() => zoomBy(1 / 1.3)} aria-label="Zoom out">
+          <button onClick={() => zoomBy(1 / 1.6)} aria-label="Zoom out">
             −
           </button>
         </div>

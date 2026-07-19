@@ -5,6 +5,17 @@ in Settings → What's new.
 
 ## [Unreleased]
 
+### Added
+
+- Country names on the globe and continent maps, sized to each country — small countries hide their label instead of cluttering the map.
+
+- Setting to show or hide country names on the maps.
+- The globe zooms much deeper, and taps near a tiny country snap to it — Vatican City, San Marino and Liechtenstein are now reachable.
+
+### Changed
+
+- Desktop now uses the full window: the country list flows into columns and continent progress shows side by side.
+
 ## [0.1.0] - 2026-07-19
 
 ### Added

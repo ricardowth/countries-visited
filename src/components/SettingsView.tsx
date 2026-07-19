@@ -68,46 +68,71 @@ export function SettingsView() {
   return (
     <div className="view settings">
       <h2>Country list</h2>
-      {LIST_OPTIONS.map((o) => (
-        <button
-          key={o.mode}
-          className={`option-card ${store.listMode === o.mode ? 'selected' : ''}`}
-          onClick={() => store.setListMode(o.mode)}
-        >
-          <input
-            className="radio"
-            type="radio"
-            checked={store.listMode === o.mode}
-            readOnly
-            tabIndex={-1}
-          />
-          <span>
-            <span className="title">{o.title}</span>
-            <div className="desc">{o.desc}</div>
-          </span>
-        </button>
-      ))}
+      <div className="option-grid">
+        {LIST_OPTIONS.map((o) => (
+          <button
+            key={o.mode}
+            className={`option-card ${store.listMode === o.mode ? 'selected' : ''}`}
+            onClick={() => store.setListMode(o.mode)}
+          >
+            <input
+              className="radio"
+              type="radio"
+              checked={store.listMode === o.mode}
+              readOnly
+              tabIndex={-1}
+            />
+            <span>
+              <span className="title">{o.title}</span>
+              <div className="desc">{o.desc}</div>
+            </span>
+          </button>
+        ))}
+      </div>
 
       <h2>Appearance</h2>
-      {THEME_OPTIONS.map((o) => (
-        <button
-          key={o.theme}
-          className={`option-card ${store.theme === o.theme ? 'selected' : ''}`}
-          onClick={() => store.setTheme(o.theme)}
-        >
-          <input
-            className="radio"
-            type="radio"
-            checked={store.theme === o.theme}
-            readOnly
-            tabIndex={-1}
-          />
-          <span>
-            <span className="title">{o.title}</span>
-            <div className="desc">{o.desc}</div>
-          </span>
-        </button>
-      ))}
+      <div className="option-grid">
+        {THEME_OPTIONS.map((o) => (
+          <button
+            key={o.theme}
+            className={`option-card ${store.theme === o.theme ? 'selected' : ''}`}
+            onClick={() => store.setTheme(o.theme)}
+          >
+            <input
+              className="radio"
+              type="radio"
+              checked={store.theme === o.theme}
+              readOnly
+              tabIndex={-1}
+            />
+            <span>
+              <span className="title">{o.title}</span>
+              <div className="desc">{o.desc}</div>
+            </span>
+          </button>
+        ))}
+      </div>
+
+      <h2>Map</h2>
+      <button
+        className={`option-card ${store.showLabels ? 'selected' : ''}`}
+        onClick={() => store.setShowLabels(!store.showLabels)}
+      >
+        <input
+          className="radio"
+          type="checkbox"
+          checked={store.showLabels}
+          readOnly
+          tabIndex={-1}
+        />
+        <span>
+          <span className="title">Country names on maps</span>
+          <div className="desc">
+            Show each country’s name on the globe and continent maps, sized to fit. Names too
+            small to read stay hidden.
+          </div>
+        </span>
+      </button>
 
       <h2>Your data</h2>
       <p className="home-line">
