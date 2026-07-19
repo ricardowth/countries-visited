@@ -150,6 +150,8 @@ for (const [neName, sovereign] of Object.entries(TERRITORIES)) {
 writeFileSync(join(outDir, 'countries.json'), JSON.stringify(out, null, 2));
 writeFileSync(join(outDir, 'territories.json'), JSON.stringify(territories, null, 2));
 copyFileSync(require.resolve('world-atlas/countries-50m.json'), join(outDir, 'world-50m.json'));
+// Low-detail geometry for interactive globe frames (drag/zoom), high detail on settle.
+copyFileSync(require.resolve('world-atlas/countries-110m.json'), join(outDir, 'world-110m.json'));
 
 const un = out.filter((c) => c.un).length;
 console.log(`Wrote ${out.length} countries (${un} in UN list, ${out.length} in travel list).`);

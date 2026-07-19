@@ -14,6 +14,7 @@ in Settings → What's new.
 
 ### Changed
 
+- The globe is much smoother to rotate and zoom, on phones and desktops, and now glides with momentum when you fling it.
 - Desktop now uses the full window: the country list flows into columns and continent progress shows side by side.
 
 ## [0.1.0] - 2026-07-19

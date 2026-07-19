@@ -1,6 +1,6 @@
 import { geoArea, geoCentroid } from 'd3-geo';
 import type { Position } from 'geojson';
-import { worldFeatures, featureKey, type CountryFeature } from '../data/geo';
+import { worldFeatures, featureKey, lowFeatureByKey, type CountryFeature } from '../data/geo';
 import { codeForMapKey, countryByCode, sovereignByMapId } from '../data/countries';
 
 export interface LabelAnchor {
@@ -9,10 +9,15 @@ export interface LabelAnchor {
   /** The feature's largest polygon — labels anchor here so far-flung parts
    *  (Alaska, French Guiana, Svalbard) don't drag the label into the sea. */
   labelFeature: CountryFeature;
+  /** Coarse-geometry version of labelFeature for cheap per-frame bounds fitting
+   *  on the globe (falls back to full detail for microstates missing at 110m). */
+  boundsFeature: CountryFeature;
   /** Spherical centroid of labelFeature, for globe visibility tests. */
   centroid: [number, number];
   /** Spherical area of the whole feature (steradians), for tap-target sizing. */
   areaSr: number;
+  /** Rough angular diameter (radians) of the label area, for size pre-filtering. */
+  estDiamRad: number;
   name: string;
 }
 
@@ -39,8 +44,19 @@ export const labelAnchors: LabelAnchor[] = worldFeatures.flatMap((f) => {
     ? f.properties.name
     : (countryByCode.get(code)?.name ?? f.properties.name);
   const labelFeature = largestPolygonFeature(f);
+  const low = lowFeatureByKey.get(key);
+  const boundsFeature = low ? largestPolygonFeature(low) : labelFeature;
   return [
-    { key, code, labelFeature, centroid: geoCentroid(labelFeature), areaSr: geoArea(f), name },
+    {
+      key,
+      code,
+      labelFeature,
+      boundsFeature,
+      centroid: geoCentroid(labelFeature),
+      areaSr: geoArea(f),
+      estDiamRad: 2 * Math.sqrt(geoArea(labelFeature) / Math.PI),
+      name,
+    },
   ];
 });
 
