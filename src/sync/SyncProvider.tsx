@@ -38,6 +38,9 @@ export function SyncProvider({ children }: { children: ReactNode }) {
   const { listMode, statuses, stamps, applyCloud } = useStore();
   const [user, setUser] = useState<User | null>(null);
   const [syncError, setSyncError] = useState<string | null>(null);
+  // True once we've heard from the Firestore server (not just its local cache)
+  // at least once this session — guards the push effect below.
+  const [serverConfirmed, setServerConfirmed] = useState(false);
 
   // Latest local state, readable from the snapshot listener without resubscribing.
   const localRef = useRef({ listMode, statuses, stamps });
@@ -54,25 +57,34 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     if (!user) {
       lastSynced.current = '';
       setSyncError(null);
+      setServerConfirmed(false);
       return;
     }
+    setServerConfirmed(false);
     const ref = doc(db, 'users', user.uid);
     return onSnapshot(
       ref,
       (snap) => {
         setSyncError(null);
         const data = snap.data() as Partial<CloudDoc> | undefined;
-        if (!data) return;
-        const local = localRef.current;
-        const remoteStatuses = (data.statuses ?? {}) as CloudStatuses;
-        const merged = merge(toCloud(local.statuses, local.stamps), remoteStatuses);
-        const nextListMode =
-          data.listMode === 'travel' || data.listMode === 'un' ? data.listMode : local.listMode;
-        if (stableStringify(merged) === stableStringify(remoteStatuses)) {
-          // Nothing local is newer — remember this doc so the push effect stays quiet.
-          lastSynced.current = stableStringify({ listMode: nextListMode, statuses: merged });
+        if (data) {
+          const local = localRef.current;
+          const remoteStatuses = (data.statuses ?? {}) as CloudStatuses;
+          const merged = merge(toCloud(local.statuses, local.stamps), remoteStatuses);
+          const nextListMode =
+            data.listMode === 'travel' || data.listMode === 'un' ? data.listMode : local.listMode;
+          if (stableStringify(merged) === stableStringify(remoteStatuses)) {
+            // Nothing local is newer — remember this doc so the push effect stays quiet.
+            lastSynced.current = stableStringify({ listMode: nextListMode, statuses: merged });
+          }
+          applyCloud({ listMode: nextListMode, ...fromCloud(merged) });
         }
-        applyCloud({ listMode: nextListMode, ...fromCloud(merged) });
+        // Firestore fires an immediate snapshot from its local cache (empty, on a
+        // device that's never seen this doc before) before the real server reply.
+        // Only unlock pushing once we know the actual cloud state — otherwise a
+        // blank first push would overwrite it (setDoc's `merge` only merges
+        // top-level fields, so an empty `statuses` map replaces the real one).
+        if (!snap.metadata.fromCache) setServerConfirmed(true);
       },
       (err) => {
         console.error('Cloud sync read failed:', err);
@@ -83,8 +95,10 @@ export function SyncProvider({ children }: { children: ReactNode }) {
 
   // Push: after every local change, write the full map back. Firestore queues
   // this while offline and flushes it on reconnect — offline sync for free.
+  // Gated on serverConfirmed so this can never fire before the pull above has
+  // told us the real cloud state.
   useEffect(() => {
-    if (!user) return;
+    if (!user || !serverConfirmed) return;
     const payload: CloudDoc = { listMode, statuses: toCloud(statuses, stamps) };
     const json = stableStringify(payload);
     if (json === lastSynced.current) return;
@@ -95,7 +109,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         console.warn('Cloud sync write failed:', err);
         setSyncError(err.code ?? 'unknown');
       });
-  }, [user, listMode, statuses, stamps]);
+  }, [user, serverConfirmed, listMode, statuses, stamps]);
 
   const value = useMemo<SyncContextValue>(
     () => ({ user, login: loginWithGoogle, logout, syncError }),

@@ -12,6 +12,7 @@ in Settings → What's new.
 
 ### Fixed
 
+- Fixed a bug where signing in on a new device could wipe your cloud-saved countries instead of merging with them, if the new device pushed its own empty state before it had pulled your existing data down.
 - Settings now shows a warning if cloud sync fails (for example, a permission or connection problem), instead of silently doing nothing.
 
 ## [0.2.0] - 2026-07-20
