@@ -10,6 +10,10 @@ in Settings → What's new.
 - The Continents tab is now called Map.
 - Continent maps fill the whole map area instead of floating in empty space, so each continent appears larger.
 
+### Fixed
+
+- Settings now shows a warning if cloud sync fails (for example, a permission or connection problem), instead of silently doing nothing.
+
 ## [0.2.0] - 2026-07-20
 
 ### Added

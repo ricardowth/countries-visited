@@ -152,6 +152,12 @@ export function SettingsView() {
             Signed in as <strong>{sync.user.displayName ?? sync.user.email}</strong>. Your
             countries are backed up and sync across devices, even after offline changes.
           </p>
+          {sync.syncError && (
+            <p className="home-line sync-error">
+              ⚠️ Sync isn&apos;t working right now ({sync.syncError}). Your countries stay saved
+              on this device, but backup and cross-device sync are paused until this clears.
+            </p>
+          )}
           <button className="btn" onClick={() => sync.logout()}>
             Sign out
           </button>
