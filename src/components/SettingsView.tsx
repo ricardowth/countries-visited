@@ -202,6 +202,7 @@ export function SettingsView() {
 
       <h2>What&apos;s new</h2>
       <div className="changelog">{renderChangelog(changelog)}</div>
+      <p className="build-id">Build {__BUILD_ID__}</p>
     </div>
   );
 }

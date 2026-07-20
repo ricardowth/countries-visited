@@ -570,6 +570,14 @@ button {
   color: #e0524f;
 }
 
+.build-id {
+  color: var(--muted);
+  font-size: 0.7rem;
+  text-align: center;
+  margin: 20px 2px 4px;
+  opacity: 0.6;
+}
+
 .avatar {
   width: 28px;
   height: 28px;

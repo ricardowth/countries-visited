@@ -3,6 +3,13 @@ import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 
 export default defineConfig({
+  define: {
+    // Shown in Settings so it's obvious whether a device is running a stale
+    // cached build — PWA autoUpdate can lag a reload or two behind a deploy.
+    __BUILD_ID__: JSON.stringify(
+      process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? new Date().toISOString().slice(0, 16),
+    ),
+  },
   plugins: [
     react(),
     VitePWA({
