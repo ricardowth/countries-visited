@@ -320,6 +320,12 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
         lambda + dx * speed,
         Math.max(-90, Math.min(90, phi - dy * speed)),
       ];
+      // Below the tap threshold this could still turn out to be a stationary
+      // tap's natural jitter rather than a real drag — redrawing (even the
+      // cheap gesture frame) hides labels for a moment, which reads as a
+      // flash. Rotation still tracks every move above, so a real drag that
+      // crosses the threshold picks up with no jump; only the redraw waits.
+      if (moved < tapThreshold) return;
       interactionFrame();
     }
 

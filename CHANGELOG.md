@@ -17,6 +17,7 @@ in Settings → What's new.
 - Fixed the globe being hard to tap on phones — a touch that wobbled slightly was often mistaken for a drag and the tap got ignored.
 - Fixed the country menu on the globe instantly closing itself right after opening on phones.
 - Disabled pinch/double-tap page zoom, which could interfere with taps on phones.
+- Fixed country names on the globe flickering off and back on when you tap a country.
 
 ## [0.2.0] - 2026-07-20
 
