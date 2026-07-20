@@ -259,6 +259,10 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
     let velX = 0;
     let velY = 0;
     let lastMoveT = 0;
+    // A finger wobbles more than a mouse even for a stationary tap, and
+    // pointermove fires often enough that this accumulates fast — too tight
+    // a threshold here makes real taps register as drags and get swallowed.
+    let tapThreshold = 5;
 
     function localPos(e: PointerEvent): [number, number] {
       const rect = canvas.getBoundingClientRect();
@@ -270,6 +274,7 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
       canvas.setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, localPos(e));
       moved = 0;
+      tapThreshold = e.pointerType === 'touch' ? 16 : 5;
       velX = 0;
       velY = 0;
       lastMoveT = e.timeStamp;
@@ -317,7 +322,7 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
       const pos = pointers.get(e.pointerId);
       pointers.delete(e.pointerId);
       pinchDist = 0;
-      if (pos && moved < 5) {
+      if (pos && moved < tapThreshold) {
         handleTap(pos);
       } else if (pointers.size === 0) {
         // Fling if the pointer was still moving when released.

@@ -14,6 +14,7 @@ in Settings → What's new.
 
 - Fixed a bug where signing in on a new device could wipe your cloud-saved countries instead of merging with them, if the new device pushed its own empty state before it had pulled your existing data down.
 - Settings now shows a warning if cloud sync fails (for example, a permission or connection problem), instead of silently doing nothing.
+- Fixed the globe being hard to tap on phones — a touch that wobbled slightly was often mistaken for a drag and the tap got ignored.
 
 ## [0.2.0] - 2026-07-20
 
