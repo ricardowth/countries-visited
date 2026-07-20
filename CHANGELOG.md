@@ -16,6 +16,7 @@ in Settings → What's new.
 - Settings now shows a warning if cloud sync fails (for example, a permission or connection problem), instead of silently doing nothing.
 - Fixed the globe being hard to tap on phones — a touch that wobbled slightly was often mistaken for a drag and the tap got ignored.
 - Fixed the country menu on the globe instantly closing itself on phones right after opening.
+- Disabled pinch/double-tap page zoom, which could trigger mid-tap on phones and make menus flash open and closed.
 
 ## [0.2.0] - 2026-07-20
 
