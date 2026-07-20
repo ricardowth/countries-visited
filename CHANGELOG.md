@@ -5,6 +5,11 @@ in Settings → What's new.
 
 ## [Unreleased]
 
+### Changed
+
+- The Continents tab is now called Map.
+- Continent maps fill the whole map area instead of floating in empty space, so each continent appears larger.
+
 ## [0.2.0] - 2026-07-20
 
 ### Added

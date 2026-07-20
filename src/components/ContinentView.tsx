@@ -13,8 +13,9 @@ import { fillVarForStatus } from './mapColors';
 import { anchorByKey, fitLabelSize, labelRect, overlapsAny, type LabelRect } from './mapLabels';
 import { Legend } from './Legend';
 
-const VIEW_W = 800;
-const VIEW_H = 620;
+const FALLBACK_W = 800;
+const FALLBACK_H = 620;
+const FRAME_PAD = 14;
 
 // Hand-tuned frames [west, south, east, north]; east may exceed 180 to cross the antimeridian.
 const FRAMES: Record<Continent, [number, number, number, number]> = {
@@ -27,19 +28,14 @@ const FRAMES: Record<Continent, [number, number, number, number]> = {
   Antarctica: [-180, -90, 180, -60],
 };
 
-function frameProjection(continent: Continent) {
+function frameProjection(continent: Continent, w: number, h: number) {
+  const extent: [[number, number], [number, number]] = [
+    [FRAME_PAD, FRAME_PAD],
+    [w - FRAME_PAD, h - FRAME_PAD],
+  ];
   if (continent === 'Antarctica') {
     // South-polar hemisphere view.
-    return geoOrthographic()
-      .rotate([0, 90])
-      .clipAngle(90)
-      .fitExtent(
-        [
-          [10, 10],
-          [VIEW_W - 10, VIEW_H - 10],
-        ],
-        { type: 'Sphere' },
-      );
+    return geoOrthographic().rotate([0, 90]).clipAngle(90).fitExtent(extent, { type: 'Sphere' });
   }
   const [west, south, east, north] = FRAMES[continent];
   const centerLon = (west + east) / 2;
@@ -54,36 +50,33 @@ function frameProjection(continent: Continent) {
   }
   return geoNaturalEarth1()
     .rotate([-centerLon, 0])
-    .fitExtent(
-      [
-        [10, 10],
-        [VIEW_W - 10, VIEW_H - 10],
-      ],
-      { type: 'MultiPoint', coordinates: points },
-    );
+    .fitExtent(extent, { type: 'MultiPoint', coordinates: points });
 }
 
 export function ContinentView({ onSelect }: { onSelect: (code: string) => void }) {
   const { statuses, listMode, showLabels } = useStore();
   const [continent, setContinent] = useState<Continent>('Europe');
   const mapRef = useRef<HTMLDivElement>(null);
-  const [mapSize, setMapSize] = useState({ w: VIEW_W, h: VIEW_H });
+  const [mapSize, setMapSize] = useState({ w: FALLBACK_W, h: FALLBACK_H });
 
   useEffect(() => {
     const el = mapRef.current;
     if (!el) return;
     const observer = new ResizeObserver(() => {
-      setMapSize({ w: el.clientWidth || VIEW_W, h: el.clientHeight || VIEW_H });
+      setMapSize({
+        w: Math.round(el.clientWidth) || FALLBACK_W,
+        h: Math.round(el.clientHeight) || FALLBACK_H,
+      });
     });
     observer.observe(el);
     return () => observer.disconnect();
   }, []);
 
-  // The SVG scales with `meet`, so on-screen px = viewBox units × this factor.
-  const scale = Math.min(mapSize.w / VIEW_W, mapSize.h / VIEW_H) || 1;
+  // The viewBox matches the container 1:1, so viewBox units are on-screen px.
+  const { w: viewW, h: viewH } = mapSize;
 
   const shapes = useMemo(() => {
-    const projection = frameProjection(continent);
+    const projection = frameProjection(continent, viewW, viewH);
     const path = geoPath(projection);
     return worldFeatures.map((f) => {
       const key = featureKey(f);
@@ -101,7 +94,7 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
       const anchor = active ? anchorByKey.get(key) : undefined;
       if (anchor) {
         const [[x0, y0], [x1, y1]] = path.bounds(anchor.labelFeature);
-        const size = fitLabelSize(anchor.name, x1 - x0, y1 - y0, 9 / scale, 19 / scale);
+        const size = fitLabelSize(anchor.name, x1 - x0, y1 - y0, 9, 19);
         if (size) {
           const [cx, cy] = path.centroid(anchor.labelFeature);
           label = { x: cx, y: cy, size, text: anchor.name };
@@ -119,7 +112,7 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
         label,
       };
     });
-  }, [continent, listMode, scale]);
+  }, [continent, listMode, viewW, viewH]);
 
   // Drop labels that stick out of the frame or collide; bigger countries win.
   const visibleLabels = useMemo(() => {
@@ -131,13 +124,13 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
     for (const s of withLabels) {
       const { x, y, size, text } = s.label!;
       const rect = labelRect(x, y, text, size);
-      if (rect.x0 < 4 || rect.y0 < 4 || rect.x1 > VIEW_W - 4 || rect.y1 > VIEW_H - 4) continue;
+      if (rect.x0 < 4 || rect.y0 < 4 || rect.x1 > viewW - 4 || rect.y1 > viewH - 4) continue;
       if (overlapsAny(rect, placed)) continue;
       placed.push(rect);
       out.push({ key: s.key, x, y, size, text });
     }
     return out;
-  }, [shapes, showLabels]);
+  }, [shapes, showLabels, viewW, viewH]);
 
   return (
     <div className="view no-scroll">
@@ -154,13 +147,13 @@ export function ContinentView({ onSelect }: { onSelect: (code: string) => void }
         ))}
       </div>
       <div className="continent-map" ref={mapRef}>
-        <svg viewBox={`0 0 ${VIEW_W} ${VIEW_H}`} preserveAspectRatio="xMidYMid meet">
+        <svg viewBox={`0 0 ${viewW} ${viewH}`} preserveAspectRatio="xMidYMid meet">
           <defs>
             <clipPath id="map-frame">
-              <rect x="0" y="0" width={VIEW_W} height={VIEW_H} rx="14" />
+              <rect x="0" y="0" width={viewW} height={viewH} rx="14" />
             </clipPath>
           </defs>
-          <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill="var(--ocean)" rx="14" />
+          <rect x="0" y="0" width={viewW} height={viewH} fill="var(--ocean)" rx="14" />
           <g clipPath="url(#map-frame)">
             {shapes.map((s) => {
               const active = s.inContinent && s.inList && s.code;

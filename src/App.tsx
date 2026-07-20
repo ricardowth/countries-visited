@@ -8,11 +8,11 @@ import { StatsView } from './components/StatsView';
 import { SettingsView } from './components/SettingsView';
 import { CountrySheet } from './components/CountrySheet';
 
-type Tab = 'globe' | 'continents' | 'list' | 'stats' | 'settings';
+type Tab = 'globe' | 'map' | 'list' | 'stats' | 'settings';
 
 const TABS: { id: Tab; label: string; icon: string }[] = [
   { id: 'globe', label: 'Globe', icon: '🌍' },
-  { id: 'continents', label: 'Continents', icon: '🗺️' },
+  { id: 'map', label: 'Map', icon: '🗺️' },
   { id: 'list', label: 'List', icon: '📋' },
   { id: 'stats', label: 'Stats', icon: '📊' },
   { id: 'settings', label: 'Settings', icon: '⚙️' },
@@ -53,7 +53,7 @@ export default function App() {
       </header>
 
       {tab === 'globe' && <GlobeView onSelect={setSelected} />}
-      {tab === 'continents' && <ContinentView onSelect={setSelected} />}
+      {tab === 'map' && <ContinentView onSelect={setSelected} />}
       {tab === 'list' && <ListView onSelect={setSelected} />}
       {tab === 'stats' && <StatsView />}
       {tab === 'settings' && <SettingsView />}
