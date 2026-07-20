@@ -324,6 +324,7 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
     }
 
     function onPointerUp(e: PointerEvent) {
+      e.preventDefault();
       const pos = pointers.get(e.pointerId);
       pointers.delete(e.pointerId);
       pinchDist = 0;
