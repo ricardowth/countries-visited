@@ -1,5 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { useStore, type PersistedState, type ThemePref } from '../state/store';
+import { useSync } from '../sync/SyncProvider';
 import { COUNTRIES, type ListMode, type Status } from '../data/countries';
 import changelog from '../../CHANGELOG.md?raw';
 
@@ -24,7 +25,14 @@ const THEME_OPTIONS: { theme: ThemePref; title: string; desc: string }[] = [
 
 export function SettingsView() {
   const store = useStore();
+  const sync = useSync();
   const fileRef = useRef<HTMLInputElement>(null);
+
+  const signIn = () => {
+    sync.login().catch(() => {
+      alert('Sign-in failed. Check your connection and try again.');
+    });
+  };
 
   const exportData = () => {
     const blob = new Blob(
@@ -133,6 +141,32 @@ export function SettingsView() {
           </div>
         </span>
       </button>
+
+      <h2>Account &amp; sync</h2>
+      {sync.user ? (
+        <>
+          <p className="home-line account-row">
+            {sync.user.photoURL && (
+              <img className="avatar" src={sync.user.photoURL} alt="" referrerPolicy="no-referrer" />
+            )}
+            Signed in as <strong>{sync.user.displayName ?? sync.user.email}</strong>. Your
+            countries are backed up and sync across devices, even after offline changes.
+          </p>
+          <button className="btn" onClick={() => sync.logout()}>
+            Sign out
+          </button>
+        </>
+      ) : (
+        <>
+          <p className="home-line">
+            Optional: sign in to back up your countries and sync them across devices. The app
+            keeps working fully offline either way.
+          </p>
+          <button className="btn" onClick={signIn}>
+            🔐 Sign in with Google
+          </button>
+        </>
+      )}
 
       <h2>Your data</h2>
       <p className="home-line">

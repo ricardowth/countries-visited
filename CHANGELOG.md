@@ -5,8 +5,11 @@ in Settings → What's new.
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-07-20
+
 ### Added
 
+- Optional Google sign-in in Settings: your marked countries are backed up to the cloud and stay in sync across your devices. Changes made offline sync automatically when you're back online. Without signing in, everything keeps working on your device as before.
 - Country names on the globe and continent maps, sized to each country — small countries hide their label instead of cluttering the map.
 
 - Setting to show or hide country names on the maps.

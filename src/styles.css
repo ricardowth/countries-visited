@@ -560,6 +560,19 @@ button {
   border-color: color-mix(in srgb, #e0524f 40%, transparent);
 }
 
+.account-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
 .changelog {
   background: var(--panel);
   border: 1px solid var(--border);
