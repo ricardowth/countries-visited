@@ -270,6 +270,11 @@ export function GlobeView({ onSelect }: { onSelect: (code: string) => void }) {
     }
 
     function onPointerDown(e: PointerEvent) {
+      // Suppresses the browser's synthetic mouse/click events that would
+      // otherwise follow this touch — without this, a tap that opens the
+      // country sheet gets an immediate "ghost" click on the sheet's
+      // backdrop (now sitting where the finger was) that closes it again.
+      e.preventDefault();
       cancelInertia();
       canvas.setPointerCapture(e.pointerId);
       pointers.set(e.pointerId, localPos(e));
